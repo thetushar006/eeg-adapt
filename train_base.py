@@ -37,8 +37,8 @@ parser = argparse.ArgumentParser(
     description='Subject-independent classification with KU Data')
 parser.add_argument('datapath', type=str, help='Path to the h5 data file')
 parser.add_argument('outpath', type=str, help='Path to the result folder')
-parser.add_argument('-fold', type=int,
-                    help='k-fold index, starts with 0', required=True)
+parser.add_argument('-fold', type=int, default=0,
+                    help='k-fold index, starts with 0')
 parser.add_argument('-gpu', type=int, help='The gpu device to use', default=0)
 
 args = parser.parse_args()
