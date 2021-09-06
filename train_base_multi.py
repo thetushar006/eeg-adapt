@@ -59,7 +59,7 @@ test_subj = subjs[fold]
 torch.cuda.set_device(args.gpu)
 set_random_seeds(seed=20200205, cuda=True)
 BATCH_SIZE = 16
-TRAIN_EPOCH = 1  # consider 200 for early stopping
+TRAIN_EPOCH = 200  # consider 200 for early stopping
 
 MOVE_TYPE = "MI"
 UNIQUE_LABELS = ["all","Backward","Cylindrical","Down","Forward","Left","Lumbrical","Right","Spherical","Up",
