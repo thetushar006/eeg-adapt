@@ -28,7 +28,8 @@ import torch
 import torch.nn.functional as F
 from braindecode.datautil.signal_target import SignalAndTarget
 from braindecode.models.deep4 import Deep4Net
-from braindecode.models.eegnet import EEGNetv4
+# from braindecode.models.eegnet import EEGNetv4
+from eegNet_ablation import EEGNetv4
 from braindecode.torch_ext.optimizers import AdamW
 from braindecode.torch_ext.util import set_random_seeds
 from sklearn.model_selection import KFold
@@ -168,7 +169,7 @@ if __name__ == "__main__":
                      "Up", "twist_Left", "twist_Right"]
     # labels_idx_for_classif = [2, 4, 10, 11]
     # labels_idx_for_classif = list(range(1,12))
-    labels_idx_for_classif = [1, 4]
+    labels_idx_for_classif = [2, 6, 8]
     labels_for_classif = [UNIQUE_LABELS[idx] for idx in labels_idx_for_classif]
     print(f"Labels chosen for multi-class classification = {labels_for_classif}")
 
