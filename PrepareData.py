@@ -8,8 +8,10 @@ import DataLoadingUtils.LoadKUMulti
 def main():
     parser = argparse.ArgumentParser()
     parser = DataLoadingUtils.PrepareData.get_args(parser)
+    parser.add_argument("--data_type", default='vhdr', choices=['vhdr', 'MAT'],
+                         help="Whether to consider raw vhdr or preprocessed MAT files [vhdr, MAT]")
     args = parser.parse_args()
-    load_data = DataLoadingUtils.LoadKUMulti.LoadKUMulti('MAT', args.path_to_data)
+    load_data = DataLoadingUtils.LoadKUMulti.LoadKUMulti(args.data_type, args.path_to_data)
     MOVE_TYPES = ("multigrasp", "reaching", "twist")
     ACTION_TYPES = ("realMove", "MI")
     sub_ID_list = range(args.subject_start, args.subject_stop + 1)
@@ -19,7 +21,7 @@ def main():
         prep_subject_data = DataLoadingUtils.PrepareData.GetSubjectDataSequential(subject_ID, load_data, args.need_filtering, args.freqlp, args.freqhp, args.path_to_save,
                              args.filter_name, args.need_decimate, args.create_mesh, args.mesh_dim, args.transform_type,
                              args.v73, args.n_cpus_max, args.path_to_vertices)
-        prep_subject_data.main_process_multiclass(move_types=MOVE_TYPES, action_types=ACTION_TYPES)
+        prep_subject_data.main_process_ku_multiclass(move_types=MOVE_TYPES, action_types=ACTION_TYPES)
         print(f"Time taken for subject {subject_ID}: {time.time()-start}s")
 
 
