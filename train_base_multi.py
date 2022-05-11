@@ -45,6 +45,7 @@ def get_args():
     parser.add_argument('-gpu', type=int, help='The gpu device to use', default=0)
     parser.add_argument("--model", choices=[0, 1], type=int, help="0: DeepConvNet, 1:EEGNetv4")
     parser.add_argument("--move_type", choices=[0, 1], type=int, help="0: MI, 1: realMove")
+    parser.add_argument("--dataset", choices=[0, 1], type=int, default=0, help="0: KUMultiClass, 1: BCIUE")
     return parser.parse_args()
 
 def convert_labels_to_numerals(ydata):
@@ -53,15 +54,32 @@ def convert_labels_to_numerals(ydata):
         ydata_numeral[np.where(ydata==label)] = i
     return np.int64(ydata_numeral)
 
-def get_data_multiclass(subj, move_type):
+def get_data_multiclass(subj, move_type, dataset_idx):
     eeg_fname = f"Sub{subj}_{move_type}.npy"
     eegdata = np.load(pjoin(datapath,eeg_fname),allow_pickle=True).item()
     xdata, ylabels = eegdata['xdata'], eegdata['yLabels']
-    ylabels_stripped = np.array([label.translate(str.maketrans("","","[']")) for label in ylabels])
-    idx_chosen = [i for i in range(len(ylabels_stripped)) if ylabels_stripped[i] in labels_for_classif]
-    ydata = convert_labels_to_numerals(ylabels_stripped[idx_chosen])
-    xdata = xdata[idx_chosen]
+    if dataset_idx == 0:
+        ydata, idx_chosen = get_ydata_KUMulticlass(ylabels)
+        xdata = xdata[idx_chosen]
+    else:
+        ydata = get_ydata_distalUEMulticlass(ylabels)
+
     return xdata, ydata
+
+def get_ydata_KUMulticlass(ylabels):
+    ylabels_stripped = np.array([label.translate(str.maketrans("", "", "[']")) for label in ylabels])
+    idx_chosen = [i for i in range(len(ylabels_stripped)) if ylabels_stripped[i] in labels_for_classif]
+    return convert_labels_to_numerals(ylabels_stripped[idx_chosen]), idx_chosen
+
+def get_ydata_distalUEMulticlass(ylabels):
+    ydata = np.zeros(ylabels.shape, dtype=ylabels.dtype)
+    unique_classes = np.unique(ylabels)
+    for i, cls in enumerate(unique_classes):
+        ydata[ylabels == cls] = i
+
+    print(ylabels)
+    print(ydata)
+    return ydata
 
 # def get_data(subj):
     # dpath = '/s' + str(subj)
@@ -70,11 +88,11 @@ def get_data_multiclass(subj, move_type):
     # return X, Y
 
 
-def get_multi_data(subjs, move_type):
+def get_multi_data(subjs, move_type, dataset_idx):
     Xs = []
     Ys = []
     for s in subjs:
-        x, y = get_data_multiclass(s, move_type)
+        x, y = get_data_multiclass(s, move_type, dataset_idx)
         Xs.append(x[:])
         Ys.append(y[:])
     X = np.concatenate(Xs, axis=0)
@@ -82,17 +100,17 @@ def get_multi_data(subjs, move_type):
     return X, Y
 
 
-def experiment(subjs, test_subj, labels_idx_for_classif, outpath, model_choice, move_type):
+def experiment(subjs, test_subj, labels_idx_for_classif, outpath, model_choice, move_type, dataset_idx=0):
     cv_loss = []
-    torch.cuda.set_device(args.gpu)
+    # torch.cuda.set_device(args.gpu)
     set_random_seeds(seed=20200205, cuda=True)
     BATCH_SIZE = 16
     TRAIN_EPOCH = 200  # consider 200 for early stopping
     train_subjs = subjs[subjs != test_subj]
     # valid_subjs = cv_set[test_index]
-    X_train, Y_train = get_multi_data(train_subjs, move_type)
+    X_train, Y_train = get_multi_data(train_subjs, move_type, dataset_idx)
     # X_val, Y_val = get_multi_data(valid_subjs)
-    X_test, Y_test = get_data_multiclass(test_subj, move_type)
+    X_test, Y_test = get_data_multiclass(test_subj, move_type, dataset_idx)
     train_set = SignalAndTarget(X_train, y=Y_train)
     # valid_set = SignalAndTarget(X_val, y=Y_val)
     test_set = SignalAndTarget(X_test, y=Y_test)
@@ -161,16 +179,24 @@ if __name__ == "__main__":
     assert (fold >= 0 and fold < 5)
     MODELS = ("DCNet", "EEGNet")
     print(f"Model is {MODELS[args.model]}")
-    subjs = np.array(range(1, 26))
+    subjs = np.array(range(1, 26)) if args.dataset == 0 else np.array(range(1,13))
     ALL_MOVE = ("MI", "realMove")
     move_type = ALL_MOVE[args.move_type]
     print(f"Move type {move_type}")
-    UNIQUE_LABELS = ["all", "Backward", "Cylindrical", "Down", "Forward", "Left", "Lumbrical", "Right", "Spherical",
+    if args.dataset == 0:
+        ALL_LABELS = ["all", "Backward", "Cylindrical", "Down", "Forward", "Left", "Lumbrical", "Right", "Spherical",
                      "Up", "twist_Left", "twist_Right"]
-    # labels_idx_for_classif = [2, 4, 10, 11]
-    # labels_idx_for_classif = list(range(1,12))
-    labels_idx_for_classif = [2, 6, 8]
-    labels_for_classif = [UNIQUE_LABELS[idx] for idx in labels_idx_for_classif]
+        # labels_idx_for_classif = [2, 4, 10, 11]
+        # labels_idx_for_classif = list(range(1,12))
+        labels_idx_for_classif = [2, 6, 8]
+        labels_for_classif = [ALL_LABELS[idx] for idx in labels_idx_for_classif]
+    else:
+        ALL_LABELS_MI = {"Grasp_MI": 121, "Hand_Open_MI": 111, "Pinch_MI": 131}
+        ALL_LABELS_ME = {"Grasp_ME": 120, "Hand_Open_ME": 110, "Pinch_ME": 130}
+        ALL_LABELS = {"ME": ALL_LABELS_ME, "MI": ALL_LABELS_MI}
+        labels_idx_for_classif = [0, 1, 2]
+        labels_for_classif = list(ALL_LABELS["ME" if move_type == "realMove" else "MI"].keys())
+
     print(f"Labels chosen for multi-class classification = {labels_for_classif}")
 
     cv_set = range(fold * 5 + 1, (fold + 1) * 5 + 1)
@@ -178,4 +204,4 @@ if __name__ == "__main__":
 
     for test_subj in cv_set:
         print(f"Test Subject {test_subj}")
-        experiment(subjs, test_subj, labels_idx_for_classif, outpath, args.model, move_type)
+        experiment(subjs, test_subj, labels_idx_for_classif, outpath, args.model, move_type, args.dataset)
