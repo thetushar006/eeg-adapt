@@ -9,10 +9,11 @@ def main():
     parser = argparse.ArgumentParser()
     parser = DataLoadingUtils.PrepareData.get_args(parser)
     parser.add_argument("--data_type", default="vhdr", help="This is currently the only available format of RAW data")
+    parser.add_argument("--version", default=2, type=int, help="1: trial-based data, 2: continuous movement")
     args = parser.parse_args()
-    data_loader = DataLoadingUtils.LoadDistalUE.LoadDistalUE(args.data_type, args.path_to_data)
+    data_loader = DataLoadingUtils.LoadDistalUE.LoadDistalUE(args.version, args.data_type, args.path_to_data)
     MOVE_TYPES = ("distalUE")
-    ACTION_TYPES = ("realMove", "MI")
+    ACTION_TYPES = ["realMove"] if args.version == 2 else ("realMove", "MI")
     sub_ID_list = range(args.subject_start, args.subject_stop + 1)
     for subject_ID in sub_ID_list:
         print(f"Subject {subject_ID}, preprocessing starting")
